@@ -18,19 +18,30 @@ def encode_city(city: str):
 
     return mapping[city]
 
-def decode_city(city: str):
-    mapping ={
-        np.array([0,0,0]): "Gdynia",
-        np.array([0,0,1]): "Konin",
-        np.array([0,1,0]): "Kutno",
-        np.array([0,1,1]): "Mielec",
-        np.array([1,0,0]): "Police",
-        np.array([1,0,1]): "Radom",
-        np.array([1,1,0]): "Szczecin",
-        np.array([1,1,1]): "Warszawa",
-    }
+def decode_city(city):
+    if city[0] == 0:
+        if city[1] == 0:
+            if city[2] == 0:
+                return "Gdynia"
+            else:
+                return "Konin"
+        else:
+            if city[2] == 0:
+                return "Kutno"
+            else:
+                return "Mielec"
+    else:
+        if city[1] == 0:
+            if city[2] == 0:
+                return "Police"
+            else:
+                return "Radom"
+        else:
+            if city[2] == 0:
+                return "Szczecin"
+            else:
+                return "Warszawa"
 
-    return mapping[city]
 
 def training(company: int, n_neighbors: int, weights: str):
     Xt = []
@@ -44,7 +55,7 @@ def training(company: int, n_neighbors: int, weights: str):
     for line in training_data:
         data = json.loads(line)
         Xt.append(encode_city(data["city"]))
-        Yt.append(np.float32(data["delivery_time"]))
+        Yt.append(np.float32(data["delta_time"]))
     
     filename = f"data/{company}_validation.jsonl"
     with open(filename, "r") as v:
@@ -53,7 +64,7 @@ def training(company: int, n_neighbors: int, weights: str):
     for line in validation_data:
         data = json.loads(line)
         Xv.append(encode_city(data["city"]))
-        Yv.append(np.float32(data["delivery_time"]))
+        Yv.append(np.float32(data["delta_time"]))
 
     knn = KNeighborsRegressor(n_neighbors, weights=weights)
     knn.fit(Xt,Yt)
@@ -61,13 +72,13 @@ def training(company: int, n_neighbors: int, weights: str):
     Y_ = knn.predict(Xv)
     score = knn.score(Xv, Yv)
 
-    filename = f"experiments/{company}_{n_neighbors}_{weights}_{score}.jsonl"
-    with open(filename, "w") as result:
+    filename = f"{company}_{n_neighbors}_{weights}_{score}.jsonl"
+    with open(filename, "w+") as result:
         for xv, yv, y_ in zip(Xv,Yv,Y_):
-            result.write(json.dumps({"city": decode_city(xv), "delivery_time": yv, "predicted_time": y_}))
+            result.write(json.dumps({"city": decode_city(xv), "delivery_time": float(yv), "predicted_time": float(y_)}))
             result.write("\n")
 
-    filename = f"experiments/{company}_{n_neighbors}_{weights}.joblib"
+    filename = f"{company}_{n_neighbors}_{weights}.joblib"
     joblib.dump(knn, filename)
 
 
@@ -78,6 +89,7 @@ if __name__ == "__main__":
         "--company",
         action = "store",
         choices = [360, 516, 620],
+        type = int,
         required = True        
     )
     argument_parser.add_argument(
@@ -96,4 +108,4 @@ if __name__ == "__main__":
     )
     program_args = vars(argument_parser.parse_args())
     
-    training(program_args["company"], program_args["neighors"], program_args["weights"])
+    training(program_args["company"], program_args["neighbors"], program_args["weights"])
