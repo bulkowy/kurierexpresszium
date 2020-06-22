@@ -1,8 +1,25 @@
 import argparse
 import json
 import numpy as np
+import pandas as pd
 from sklearn.neighbors import KNeighborsRegressor
 import joblib
+from sklearn.metrics import mean_squared_error,  mean_absolute_error, r2_score
+from sklearn.model_selection import GridSearchCV
+
+def create_measures(y,y_pred): 
+    MSE_test = mean_squared_error(y, y_pred)
+    MAE_test = mean_absolute_error(y, y_pred)
+    R2_test = r2_score(y, y_pred)
+
+    
+    d = {
+        'MSE': [round(MSE_test,4)], 
+        'MAE': [round(MAE_test,4)],
+        'R2': [round(R2_test,4)]
+    }
+    d = pd.DataFrame.from_dict(d)
+    return d
 
 def encode_city(city: str):
     mapping ={
@@ -43,11 +60,13 @@ def decode_city(city):
                 return "Warszawa"
 
 
-def training(company: int, n_neighbors: int, weights: str):
+def training(company: int):
     Xt = []
     Yt = []
     Xv = []
     Yv = []
+    Xtst = []
+    Ytst = []
     filename = f"data/{company}_training.jsonl"
     with open(filename, "r") as t:
         training_data = t.read().splitlines()
@@ -65,21 +84,87 @@ def training(company: int, n_neighbors: int, weights: str):
         data = json.loads(line)
         Xv.append(encode_city(data["city"]))
         Yv.append(np.float32(data["delta_time"]))
+        
+    
+    filename = f"data/{company}_testing.jsonl"
+    with open(filename, "r") as v:
+        testing_data = v.read().splitlines()
 
-    knn = KNeighborsRegressor(n_neighbors, weights=weights)
-    knn.fit(Xt,Yt)
+    for line in testing_data:
+        data = json.loads(line)
+        Xtst.append(encode_city(data["city"]))
+        Ytst.append(np.float32(data["delta_time"]))
 
-    Y_ = knn.predict(Xv)
-    score = knn.score(Xv, Yv)
 
-    filename = f"{company}_{n_neighbors}_{weights}_{score}.jsonl"
+    leaf_size = list(range(1, 50))
+    n_neighbors = list(range(1, 30))
+    p = [1, 2]
+    algorithm = ['ball_tree', 'kd_tree']
+    weights = ['uniform', 'distance']
+
+    hyperparameters = dict(
+        leaf_size=leaf_size, 
+        n_neighbors=n_neighbors, 
+        p=p,
+        algorithm=algorithm,
+        weights=weights,
+    )
+    model = KNeighborsRegressor()
+    model.fit(Xt, Yt)
+
+    test = create_measures(Yt,model.predict(Xt))
+    val = create_measures(Yv,model.predict(Xv))
+    oot = create_measures(Ytst,model.predict(Xtst)) 
+
+    print("PRE GRIDSEARCH _____________")
+
+    print("TEST")
+    print(test)
+    print("VAL")
+    print(val)
+    print("TEST")
+    print(oot)
+
+    clf = GridSearchCV(model, hyperparameters, cv=10)
+    best_model = clf.fit(Xv,Yv)
+
+    print("POST GRIDSEARCH _____________")
+
+    params = best_model.best_estimator_.get_params()
+
+    print('Best leaf_size:', params['leaf_size'])
+    print('Best p:', params['p'])
+    print('Best n_neighbors:', params['n_neighbors'])
+    print('Best algorithm:', params['algorithm'])
+    print('Best weights:', params['weights'])
+
+    filebase = ""
+    for k, v in params.items():
+        filebase += f"{v}_"
+    
+    model2 = KNeighborsRegressor(**params)
+    model2.fit(Xt, Yt)
+
+    test = create_measures(Yt,model2.predict(Xt))
+    val = create_measures(Yv,model2.predict(Xv))
+    oot = create_measures(Ytst,model2.predict(Xtst)) 
+
+    print(test)
+    print(val)
+    print(oot)
+
+    Y_ = model2.predict(Xv)
+
+    print("FIN _____________")
+
+    filename = f"{company}_{filebase}best.jsonl"
     with open(filename, "w+") as result:
         for xv, yv, y_ in zip(Xv,Yv,Y_):
             result.write(json.dumps({"city": decode_city(xv), "delivery_time": float(yv), "predicted_time": float(y_)}))
             result.write("\n")
 
-    filename = f"{company}_{n_neighbors}_{weights}.joblib"
-    joblib.dump(knn, filename)
+    filename = f"{company}_{filebase}best.joblib"
+    joblib.dump(best_model, filename)
 
 
 if __name__ == "__main__":
@@ -92,20 +177,5 @@ if __name__ == "__main__":
         type = int,
         required = True        
     )
-    argument_parser.add_argument(
-        "-n",
-        "--neighbors",
-        action = "store",
-        type = int,
-        required = True        
-    )
-    argument_parser.add_argument(
-        "-w",
-        "--weights",
-        action = "store",
-        choices = ['uniform', 'distance'],
-        required = True        
-    )
     program_args = vars(argument_parser.parse_args())
-    
-    training(program_args["company"], program_args["neighbors"], program_args["weights"])
+    training(program_args["company"])
