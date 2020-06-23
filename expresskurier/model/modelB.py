@@ -2,7 +2,7 @@ import argparse
 import json
 import numpy as np
 import pandas as pd
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVR
 import joblib
 from sklearn.metrics import mean_squared_error,  mean_absolute_error, r2_score
 from sklearn.model_selection import GridSearchCV
@@ -12,6 +12,7 @@ def create_measures(y,y_pred):
     MSE_test = mean_squared_error(y, y_pred)
     MAE_test = mean_absolute_error(y, y_pred)
     R2_test = r2_score(y, y_pred)
+
     
     d = {
         'MSE': [round(MSE_test,4)], 
@@ -26,6 +27,7 @@ def load_data(filename, features, target):
     X = df.loc[:, features]
 
     Y = df.loc[:, target].values
+    Y = Y.reshape(Y.size)
 
     return X, Y
 
@@ -33,8 +35,9 @@ def save_validation_set(filenames, ohe, Xv, Yv, Y_):
     for filename in filenames:
         with open(filename, "w+") as result:
             for xv, yv, y_ in zip(Xv,Yv,Y_):
+
                 result.write(json.dumps({
-                    "city": ohe.inverse_transform(xv.reshape(1, -1))[0][0], 
+                    "city": ohe.inverse_transform(xv.reshape(1, -1))[0][1], 
                     "delivery_time": float(yv), 
                     "predicted_time": float(y_)
                 }))
@@ -42,16 +45,17 @@ def save_validation_set(filenames, ohe, Xv, Yv, Y_):
 
 
 def training(company: int):
-    #features = ['shipment_day', 'city']
-    features = ['city']
+    features = ['city', 'shipment_day']
     target = ['delta_time']
     ohe = OneHotEncoder(sparse=False)
 
     filename = f"data/{company}_training.jsonl"
     Xt, Yt = load_data(filename, features, target)
+    print(Xt)
+    return
     ohe.fit(Xt)
     Xt = ohe.transform(Xt)
-    joblib.dump(ohe, 'ohe.joblib')
+    joblib.dump(ohe, '2_ohe.joblib')
     
     filename = f"data/{company}_validation.jsonl"
     Xv, Yv = load_data(filename, features, target)
@@ -62,21 +66,16 @@ def training(company: int):
     Xtst, Ytst = load_data(filename, features, target)
     Xtst = ohe.transform(Xtst)
 
-
-    leaf_size = list(range(1, 50))
-    n_neighbors = list(range(1, 30))
-    p = [1, 2]
-    algorithm = ['ball_tree', 'kd_tree']
-    weights = ['uniform', 'distance']
+    C = [0.001, 0.002, 0.005, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+    epsilon = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
+    gamma = [0.0001, 0.002, 0.0005, 0.001, 0.002, 0.005, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
 
     hyperparameters = dict(
-        leaf_size=leaf_size, 
-        n_neighbors=n_neighbors, 
-        p=p,
-        algorithm=algorithm,
-        weights=weights,
+        C=C,
+        epsilon=epsilon,
+        gamma=gamma,
     )
-    model = KNeighborsRegressor()
+    model = SVR(kernel='rbf')
     model.fit(Xt, Yt)
 
     test = create_measures(Yt,model.predict(Xt))
@@ -85,38 +84,36 @@ def training(company: int):
 
     print("PRE GRIDSEARCH _____________")
 
-    print("TEST")
+    print("TRAIN")
     print(test)
     print("VAL")
     print(val)
     print("TEST")
     print(oot)
 
-    clf = GridSearchCV(model, hyperparameters, cv=10, n_jobs=4)
+    clf = GridSearchCV(model, hyperparameters, cv=5, scoring='neg_mean_squared_error', n_jobs=4)
     best_model = clf.fit(Xv,Yv)
 
     print("POST GRIDSEARCH _____________")
 
     params = best_model.best_estimator_.get_params()
 
-    print('Best leaf_size:', params['leaf_size'])
-    print('Best p:', params['p'])
-    print('Best n_neighbors:', params['n_neighbors'])
-    print('Best algorithm:', params['algorithm'])
-    print('Best weights:', params['weights'])
+    print('Best C:', params['C'])
+    print('Best epsilon:', params['epsilon'])
+    print('Best gamma:', params['gamma'])
 
     filebase = ""
     for k, v in params.items():
         filebase += f"{v}_"
     
-    model2 = KNeighborsRegressor(**params)
+    model2 = SVR(kernel='rbf', C=params['C'], epsilon=params['epsilon'], gamma=params['gamma'])
     model2.fit(Xt, Yt)
 
     test = create_measures(Yt,model2.predict(Xt))
     val = create_measures(Yv,model2.predict(Xv))
     oot = create_measures(Ytst,model2.predict(Xtst)) 
 
-    print("TEST")
+    print("TRAIN")
     print(test)
     print("VAL")
     print(val)
@@ -127,10 +124,10 @@ def training(company: int):
 
     print("FIN _____________")
 
-    filenames = [f"{company}_{filebase}best.jsonl", f"{company}best.jsonl"]
+    filenames = [f"2_{company}_{filebase}best.jsonl", f"2_{company}best.jsonl"]
     save_validation_set(filenames, ohe, Xv, Yv, Y_)
 
-    filenames = [f"{company}_{filebase}best.joblib", f"{company}_best.joblib"]
+    filenames = [f"2_{company}_{filebase}best.joblib", f"2_{company}_best.joblib"]
     for filename in filenames:
         joblib.dump(best_model, filename)
 
