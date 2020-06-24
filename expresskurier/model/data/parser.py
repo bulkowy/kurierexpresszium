@@ -63,6 +63,7 @@ for session in sessions:
             if delta_time > 0:
                 info["delta_time"] = delta_time
                 info["shipment_day"] = time_sent.weekday()
+                info["hour"] = time_sent.hour
                 if session["user_id"] is not None:
                     if uid_city_map[session["user_id"]] in result[delivery_company].keys():
                         result[delivery_company][uid_city_map[session["user_id"]]].append(info)
