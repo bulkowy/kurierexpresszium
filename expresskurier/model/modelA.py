@@ -58,8 +58,15 @@ def training(company: int):
     Xv = ohe.transform(Xv)
         
     
-    filename = f"data/{company}_testing.jsonl"
-    Xtst, Ytst = load_data(filename, features, target)
+    filename = f"data/{company}_testingA.jsonl"
+    XA, YA = load_data(filename, features, target)
+
+    filename = f"data/{company}_testingB.jsonl"
+    XB, YB = load_data(filename, features, target)
+
+    Xtst = XA + XB
+    Ytst = YA + YB
+    
     Xtst = ohe.transform(Xtst)
 
 
