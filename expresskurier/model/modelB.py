@@ -62,20 +62,25 @@ def training(company: int):
     Xv = ohe.transform(Xv)
         
     
-    filename = f"data/{company}_testing.jsonl"
+    filename = f"data/{company}_testingB.jsonl"
     Xtst, Ytst = load_data(filename, features, target)
     Xtst = ohe.transform(Xtst)
 
-    C = [0.001, 0.002, 0.005, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-    epsilon = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
-    gamma = [0.0001, 0.002, 0.0005, 0.001, 0.002, 0.005, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
+    leaf_size = list(range(1, 50))
+    n_neighbors = list(range(1, 30))
+    p = [1, 2]
+    algorithm = ['ball_tree', 'kd_tree']
+    weights = ['uniform', 'distance']
+
 
     hyperparameters = dict(
-        C=C,
-        epsilon=epsilon,
-        gamma=gamma,
+        leaf_size=leaf_size, 
+        n_neighbors=n_neighbors, 
+        p=p,
+        algorithm=algorithm,
+        weights=weights,
     )
-    model = SVR(kernel='rbf')
+    model = KNeighborsRegressor()
     model.fit(Xt, Yt)
 
     test = create_measures(Yt,model.predict(Xt))
@@ -106,7 +111,7 @@ def training(company: int):
     for k, v in params.items():
         filebase += f"{v}_"
     
-    model2 = SVR(kernel='rbf', C=params['C'], epsilon=params['epsilon'], gamma=params['gamma'])
+    model2 = KNeighborsRegressor(**params)
     model2.fit(Xt, Yt)
 
     test = create_measures(Yt,model2.predict(Xt))
