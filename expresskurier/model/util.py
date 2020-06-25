@@ -21,7 +21,7 @@ def create_measures(y,y_pred):
     return d
 
 def load_data(filename, features, target, ohe, version, company):
-    hour_divisor = 1
+    hour_divisor = 6
     df = pd.read_json(filename, lines=True)
     X = df.loc[:, features]
     if 'hour' in X:
@@ -32,7 +32,7 @@ def load_data(filename, features, target, ohe, version, company):
         joblib.dump(ohe, f'{version}_{company}_ohe.joblib')
 
     X = ohe.transform(X)
-    Y = df.loc[:, target].values
+    Y = df.loc[:, target].values.ravel()
 
     return X, Y
 
@@ -48,18 +48,14 @@ def save_validation_set(filenames, ohe, Xv, Yv, Y_):
                 result.write("\n")
 
 def create_paramgrid():
-    leaf_size = list(range(1, 50))
-    n_neighbors = list(range(1, 30))
-    p = [1, 2]
-    algorithm = ['ball_tree', 'kd_tree']
-    weights = ['uniform', 'distance']
+    C = [0.001, 0.002, 0.005, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+    epsilon = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
+    gamma = [0.0001, 0.002, 0.0005, 0.001, 0.002, 0.005, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
 
     hyperparameters = dict(
-        leaf_size=leaf_size, 
-        n_neighbors=n_neighbors, 
-        p=p,
-        algorithm=algorithm,
-        weights=weights,
+        C=C,
+        epsilon=epsilon,
+        gamma=gamma,
     )
 
     return hyperparameters

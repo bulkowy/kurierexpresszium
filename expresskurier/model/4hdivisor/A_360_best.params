@@ -1,8 +1,0 @@
-Best algorithm: ball_tree
-Best leaf_size: 40
-Best metric: minkowski
-Best metric_params: None
-Best n_jobs: None
-Best n_neighbors: 15
-Best p: 2
-Best weights: distance

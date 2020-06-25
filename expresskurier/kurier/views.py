@@ -78,7 +78,7 @@ def transform_data(request, path, hour_divisor, companies):
 @api_view(['POST'])
 def predict(request, **kwargs):
     companies = [360, 516, 620]
-    hour_divisor = 8
+    hour_divisor = 6
     path = f'/home/bulkowy/ium/expresskurier/model/{hour_divisor}hdivisor/'
 
     val_rq = validate(request)

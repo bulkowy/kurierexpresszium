@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import joblib
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error,  mean_absolute_error, r2_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
@@ -28,7 +28,7 @@ def training(company: int):
     Xtst, Ytst = load_data(
         filename, features, target, ohe, version, company)
     
-    model = KNeighborsRegressor()
+    model = SVR(kernel='rbf')
     model.fit(Xt, Yt)
 
     train = create_measures(Yt, model.predict(Xt))
@@ -38,7 +38,7 @@ def training(company: int):
 
     params = get_best_params(model, Xv, Yv, version, company)
     
-    model2 = KNeighborsRegressor(**params)
+    model2 = SVR(kernel='rbf', C=params['C'], epsilon=params['epsilon'], gamma=params['gamma'])
     model2.fit(Xt, Yt)
     Y_ = model2.predict(Xv)
 
