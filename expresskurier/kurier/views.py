@@ -23,59 +23,102 @@ class SessionViewSet(viewsets.ModelViewSet):
     queryset = models.Session.objects.all()
     serializer_class = serializers.SessionSerializer
 
-@api_view(['POST'])
-def predict(request, **kwargs):
-    required_fields = set(['city', 'shipment_day'])
-    firms = [360, 516, 620]
+def validate(request):
+    required_fields = set(['city', 'shipment_day', 'hour'])
+    cities = [
+        'Police', 'Mielec', 'Szczecin', 'Warszawa',
+        'Radom', 'Kutno', 'Gdynia', 'Konin'
+    ]
+
+    # check args
     if set(request.data.keys()) != required_fields:
         return Response(
-            data={'errors':'Needed fields: "city", "shipment day"'},
+            data={'errors':'Needed fields: "city", "shipment day", "hour"'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    #enc_city = encode_city(request.data['city'])
-    path = '/home/bulkowy/ium/expresskurier/model'
-    ohe = joblib.load(f'{path}/ohe.joblib')
-    ohe2 = joblib.load(f'{path}/2_ohe.joblib')
+
+    if request.data['hour'] not in range(0, 24):
+        return Response(
+            data={'errors':'"hour" field required to be in range [0,23]'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if request.data['shipment_day'] not in range(0, 7):
+        return Response(
+            data={'errors':'"shipment_day" field required to be in range [0,6]'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if request.data['city'] not in cities:
+        return Response(
+            data={'errors':f'"city" field required to be in {str(cities)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    return None
+
+def transform_data(request, path, hour_divisor):
+    # get models
+    
+    ohe = joblib.load(f'{path}/A_ohe.joblib')
+    ohe2 = joblib.load(f'{path}/B_ohe.joblib')
+
+    # parse given data to be suitable for models
     enc_city = np.array([request.data['city']]).reshape(1, -1)
     enc_day = np.array([int(request.data['shipment_day'])]).reshape(1, -1)
+    enc_hour = np.array([int(request.data['hour'])//hour_divisor]).reshape(1, -1)
     tr_city = ohe.transform(enc_city)
     enc_city_day = pd.DataFrame(
-        {'city': enc_city[0][0], 'shipment_day': enc_day[0][0]}, index=[0]
+        {'city': enc_city[0][0], 'shipment_day': enc_day[0][0], 'hour': enc_hour[0][0]}, index=[0]
     )
     tr_city_day = ohe2.transform(enc_city_day)
 
+    return tr_city, tr_city_day
+
+@api_view(['POST'])
+def predict(request, **kwargs):
+    companies = [360, 516, 620]
+    hour_divisor = 6
+    path = f'/home/bulkowy/ium/expresskurier/model/{hour_divisor}hdivisor/'
+
+    val_rq = validate(request)
+
+    if val_rq:
+        return val_rq
+
+    tr_city, tr_city_day = transform_data(request, path, hour_divisor)
 
     result = {}
     result2 = {}
 
-    # try:
-    for firm in firms:
-        clf = joblib.load(f'{path}/{firm}_best.joblib')
-        result[firm] = clf.predict(tr_city)
+    try:
+        for company in companies:
+            clf = joblib.load(f'{path}/A_{company}_best.joblib')
+            result[company] = clf.predict(tr_city)
 
-        clf2 = joblib.load(f'{path}/2_{firm}_best.joblib')
-        result2[firm] = clf2.predict(tr_city_day)
+            clf2 = joblib.load(f'{path}/B_{company}_best.joblib')
+            result2[company] = clf2.predict(tr_city_day)
 
-    winner = min(result, key=result.get)
-    winner2 = min(result2, key=result2.get)
+        winner = min(result, key=result.get)
+        winner2 = min(result2, key=result2.get)
 
-    return Response(
-        data = {
-            'result': result, 
-            'winner': winner,
-            
-            'result2': result2, 
-            'winner2': winner2
-        },
-        status=status.HTTP_200_OK
-    )
-    # except Exception as e:
-    #     return Response(
-    #         data = {
-    #             'error': str(e)
-    #         },
-    #         status=status.HTTP_400_BAD_REQUEST
-    #     )
+        return Response(
+            data = {
+                'result': result, 
+                'winner': winner,
+                
+                'result2': result2, 
+                'winner2': winner2
+            },
+            status=status.HTTP_200_OK
+        )
+    except Exception as e:
+        return Response(
+            data = {
+                'error': str(e)
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
      
         
