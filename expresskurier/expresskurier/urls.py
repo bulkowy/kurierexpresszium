@@ -23,8 +23,10 @@ router.register(r'accounts', views.AccountViewSet)
 router.register(r'products', views.ProductViewSet)
 router.register(r'deliveries', views.DeliveryViewSet)
 router.register(r'sessions', views.SessionViewSet)
+#router.register(r'predict', views.predict)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path('predict/', views.predict, name='predict'),
 ]

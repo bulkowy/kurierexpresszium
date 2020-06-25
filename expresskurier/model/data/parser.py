@@ -63,6 +63,7 @@ for session in sessions:
             if delta_time > 0:
                 info["delta_time"] = delta_time
                 info["shipment_day"] = time_sent.weekday()
+                info["hour"] = time_sent.hour
                 if session["user_id"] is not None:
                     if uid_city_map[session["user_id"]] in result[delivery_company].keys():
                         result[delivery_company][uid_city_map[session["user_id"]]].append(info)
@@ -79,7 +80,8 @@ random.seed(0)
 for delivery_company in result.keys():
     training = []
     validation = []
-    testing = []
+    testingA = []
+    testingB = []
     for city in result[delivery_company].keys():
         training_size = int(0.6 * len(result[delivery_company][city]))
         for i in range(training_size):
@@ -93,9 +95,15 @@ for delivery_company in result.keys():
             delivery = result[delivery_company][city].pop(index)
             delivery["city"] = city
             validation.append(delivery)
+        populationA_size = int(0.5 * len(result[delivery_company][city]))
+        for i in range(populationA_size):
+            index = random.randint(0,len(result[delivery_company][city])-1)
+            delivery = result[delivery_company][city].pop(index)
+            delivery["city"] = city
+            testingA.append(delivery)
         for delivery in result[delivery_company][city]:
             delivery["city"] = city
-            testing.append(delivery)
+            testingB.append(delivery)
 
     filename = (f"{delivery_company}_training.jsonl")
     with open(filename, "w") as out:
@@ -109,8 +117,14 @@ for delivery_company in result.keys():
             out.write(json.dumps(delivery))
             out.write("\n")
     
-    filename = (f"{delivery_company}_testing.jsonl")
+    filename = (f"{delivery_company}_testingA.jsonl")
     with open(filename, "w") as out:
-        for delivery in testing:
+        for delivery in testingA:
+            out.write(json.dumps(delivery))
+            out.write("\n")
+
+    filename = (f"{delivery_company}_testingB.jsonl")
+    with open(filename, "w") as out:
+        for delivery in testingB:
             out.write(json.dumps(delivery))
             out.write("\n")

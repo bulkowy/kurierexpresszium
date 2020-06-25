@@ -1,5 +1,8 @@
 ./venv/*
 venv
+**__pycache__**
+**.joblib
+**.sqlite3
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json

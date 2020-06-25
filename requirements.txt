@@ -3,3 +3,4 @@ django-rest-framework
 numpy
 pandas
 tensorflow
+scikit-learn

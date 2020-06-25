@@ -1,0 +1,11 @@
+Best C: 5
+Best cache_size: 200
+Best coef0: 0.0
+Best degree: 3
+Best epsilon: 0.0001
+Best gamma: 5
+Best kernel: rbf
+Best max_iter: -1
+Best shrinking: True
+Best tol: 0.001
+Best verbose: False
