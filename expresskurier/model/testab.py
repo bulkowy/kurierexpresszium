@@ -36,7 +36,6 @@ for company in companies:
                 hour=x[2],
             )
             r = requests.post(url, json=payload)
-            f.write(r.text + '\n')
 
         for x in XB:
             payload = dict(
@@ -45,4 +44,6 @@ for company in companies:
                 hour=x[2],
             )
             r = requests.post(url, json=payload)
-            f.write(r.text + '\n')
+
+    
+# tutaj mialobyc sprawdzenie z MSE ale braklo czasu :(
