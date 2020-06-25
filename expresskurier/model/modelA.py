@@ -15,24 +15,23 @@ version = 'A'
 def training(company: int):
     features = ['city']
     target = ['delta_time']
-    ohe, need_fit = get_OHE(version)
+    ohe = OneHotEncoder(sparse=False)
 
     filename = f"data/{company}_training.jsonl"
     Xt, Yt = load_data(
-        filename, features, target, ohe, 
-        version=(version if need_fit else None))
+        filename, features, target, ohe, version, company)
     
     filename = f"data/{company}_validation.jsonl"
     Xv, Yv = load_data(
-        filename, features, target, ohe)
+        filename, features, target, ohe, version, company)
     
     filename = f"data/{company}_testingA.jsonl"
     XA, YA = load_data(
-        filename, features, target, ohe)
+        filename, features, target, ohe, version, company)
 
     filename = f"data/{company}_testingB.jsonl"
     XB, YB = load_data(
-        filename, features, target, ohe)
+        filename, features, target, ohe, version, company)
 
     Xtst = np.concatenate((XA, XB))
     Ytst = np.concatenate((YA, YB))

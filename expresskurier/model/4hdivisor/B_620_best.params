@@ -1,0 +1,8 @@
+Best algorithm: kd_tree
+Best leaf_size: 10
+Best metric: minkowski
+Best metric_params: None
+Best n_jobs: None
+Best n_neighbors: 6
+Best p: 1
+Best weights: uniform

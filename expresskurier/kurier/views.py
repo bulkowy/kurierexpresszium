@@ -57,28 +57,28 @@ def validate(request):
     
     return None
 
-def transform_data(request, path, hour_divisor):
-    # get models
-    
-    ohe = joblib.load(f'{path}/A_ohe.joblib')
-    ohe2 = joblib.load(f'{path}/B_ohe.joblib')
+def transform_data(request, path, hour_divisor, companies):
+    # get OneHot Encoders
+    ohe = [joblib.load(f'{path}/A_{c}_ohe.joblib') for c in companies]
+    ohe2 = [joblib.load(f'{path}/B_{c}_ohe.joblib') for c in companies]
 
     # parse given data to be suitable for models
     enc_city = np.array([request.data['city']]).reshape(1, -1)
+    tr_cities = {companies[i]:ohe[i].transform(enc_city) for i in range(len(companies))}
+
     enc_day = np.array([int(request.data['shipment_day'])]).reshape(1, -1)
     enc_hour = np.array([int(request.data['hour'])//hour_divisor]).reshape(1, -1)
-    tr_city = ohe.transform(enc_city)
-    enc_city_day = pd.DataFrame(
+    enc_cdh = pd.DataFrame(
         {'city': enc_city[0][0], 'shipment_day': enc_day[0][0], 'hour': enc_hour[0][0]}, index=[0]
     )
-    tr_city_day = ohe2.transform(enc_city_day)
+    tr_cdh = {companies[i]:ohe2[i].transform(enc_cdh) for i in range(len(companies))}
 
-    return tr_city, tr_city_day
+    return tr_cities, tr_cdh
 
 @api_view(['POST'])
 def predict(request, **kwargs):
     companies = [360, 516, 620]
-    hour_divisor = 6
+    hour_divisor = 8
     path = f'/home/bulkowy/ium/expresskurier/model/{hour_divisor}hdivisor/'
 
     val_rq = validate(request)
@@ -86,7 +86,7 @@ def predict(request, **kwargs):
     if val_rq:
         return val_rq
 
-    tr_city, tr_city_day = transform_data(request, path, hour_divisor)
+    tr_cities, tr_cdh = transform_data(request, path, hour_divisor, companies)
 
     result = {}
     result2 = {}
@@ -94,10 +94,10 @@ def predict(request, **kwargs):
     try:
         for company in companies:
             clf = joblib.load(f'{path}/A_{company}_best.joblib')
-            result[company] = clf.predict(tr_city)
+            result[company] = clf.predict(tr_cities[company])
 
             clf2 = joblib.load(f'{path}/B_{company}_best.joblib')
-            result2[company] = clf2.predict(tr_city_day)
+            result2[company] = clf2.predict(tr_cdh[company])
 
         winner = min(result, key=result.get)
         winner2 = min(result2, key=result2.get)

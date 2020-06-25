@@ -7,12 +7,6 @@ from sklearn.metrics import mean_squared_error,  mean_absolute_error, r2_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import OneHotEncoder
 
-def get_OHE(version):
-    if os.path.exists(f'{version}_ohe.joblib'):
-        return joblib.load(f'{version}_ohe.joblib'), False
-    else:
-        return OneHotEncoder(sparse=False), True
-
 def create_measures(y,y_pred): 
     MSE_test = mean_squared_error(y, y_pred)
     MAE_test = mean_absolute_error(y, y_pred)
@@ -26,12 +20,16 @@ def create_measures(y,y_pred):
     d = pd.DataFrame.from_dict(d)
     return d
 
-def load_data(filename, features, target, ohe, version=None):
+def load_data(filename, features, target, ohe, version, company):
+    hour_divisor = 1
     df = pd.read_json(filename, lines=True)
     X = df.loc[:, features]
-    if version:
+    if 'hour' in X:
+        X['hour'] = X['hour'].floordiv(hour_divisor)
+
+    if not os.path.exists(f'{version}_{company}_ohe.joblib'):
         ohe.fit(X)
-        joblib.dump(ohe, f'{version}_ohe.joblib')
+        joblib.dump(ohe, f'{version}_{company}_ohe.joblib')
 
     X = ohe.transform(X)
     Y = df.loc[:, target].values
@@ -79,7 +77,7 @@ def get_best_params(model, Xv, Yv, version, company):
     params = best_model.best_estimator_.get_params()
     dump_best_params(params, version, company)
 
-    return params    
+    return params
 
 def print_measures(train, val, oot, prefix):
     print(f'{prefix} GRIDSEARCH _____________')

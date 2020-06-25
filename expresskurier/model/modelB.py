@@ -14,27 +14,26 @@ version = 'B'
 def training(company: int):
     features = ['city', 'shipment_day', 'hour']
     target = ['delta_time']
-    ohe, need_fit = get_OHE(version)
+    ohe = OneHotEncoder(sparse=False)
 
     filename = f'data/{company}_training.jsonl'
     Xt, Yt = load_data(
-        filename, features, target, ohe, 
-        version=(version if need_fit else None))
+        filename, features, target, ohe, version, company)
     
     filename = f'data/{company}_validation.jsonl'
     Xv, Yv = load_data(
-        filename, features, target, ohe)
+        filename, features, target, ohe, version, company)
         
     filename = f'data/{company}_testingB.jsonl'
     Xtst, Ytst = load_data(
-        filename, features, target, ohe)
+        filename, features, target, ohe, version, company)
     
     model = KNeighborsRegressor()
     model.fit(Xt, Yt)
 
-    train = create_measures(Yt,model.predict(Xt))
-    val = create_measures(Yv,model.predict(Xv))
-    oot = create_measures(Ytst,model.predict(Xtst)) 
+    train = create_measures(Yt, model.predict(Xt))
+    val = create_measures(Yv, model.predict(Xv))
+    oot = create_measures(Ytst, model.predict(Xtst)) 
     print_measures(train, val, oot, 'PRE')
 
     params = get_best_params(model, Xv, Yv, version, company)
@@ -43,9 +42,9 @@ def training(company: int):
     model2.fit(Xt, Yt)
     Y_ = model2.predict(Xv)
 
-    train = create_measures(Yt,model2.predict(Xt))
-    val = create_measures(Yv,model2.predict(Xv))
-    oot = create_measures(Ytst,model2.predict(Xtst)) 
+    train = create_measures(Yt, model2.predict(Xt))
+    val = create_measures(Yv, model2.predict(Xv))
+    oot = create_measures(Ytst, model2.predict(Xtst)) 
     print_measures(train, val, oot, 'POST')
 
     filenames = [f"{version}_{company}best.jsonl"]
